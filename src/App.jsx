@@ -15,10 +15,22 @@ function trackEvent(eventName, params = {}) {
   window.dataLayer.push({ event: eventName, ...params });
 
   if (typeof window.fbq === 'function') {
-    window.fbq('trackCustom', eventName, params);
-  }
+    // Eventos PADRÃO do Meta → aparecem automaticamente no Gerenciador de Anúncios
+    const standardEventMap = {
+      'QuizStart':    () => window.fbq('track', 'ViewContent', { content_name: 'Quiz Iniciado', content_category: 'quiz' }),
+      'QuizStep':     () => window.fbq('trackCustom', 'QuizStep', params),
+      'QuizComplete': () => window.fbq('track', 'CompleteRegistration', { content_name: 'Quiz Completo', status: true }),
+      'VSLView':      () => window.fbq('track', 'Lead', { content_name: 'VSL Aberta', content_category: 'vsl' }),
+      'CTAVisible':   () => window.fbq('trackCustom', 'CTAVisible', params),
+      'CTAClick':     () => window.fbq('track', 'InitiateCheckout', { content_name: 'CTA Clicado', value: 0, currency: 'BRL' }),
+    };
 
-  console.log('[QUIZ TRACK]', eventName, params);
+    if (standardEventMap[eventName]) {
+      standardEventMap[eventName]();
+    } else {
+      window.fbq('trackCustom', eventName, params);
+    }
+  }
 }
 
 const QUESTIONS = [
@@ -153,10 +165,31 @@ export default function App() {
   useEffect(() => {
     if (screen === 'start') {
       trackEvent('QuizStart');
+    } else if (screen === 'loading') {
+      // Preload VTurb resources during the 3.5s loading animation
+      // By the time VSL screen mounts, everything is cached
+      const vturbPreloads = [
+        { href: 'https://scripts.converteai.net/b6a53cb5-aa1a-47b3-af2b-b93c7fe8b86c/players/69d45bc3ea7d2fe7052ee466/v4/player.js', as: 'script' },
+        { href: 'https://scripts.converteai.net/lib/js/smartplayer-wc/v4/smartplayer.js', as: 'script' },
+        { href: 'https://cdn.converteai.net/b6a53cb5-aa1a-47b3-af2b-b93c7fe8b86c/69d459b584e8b7c72282687c/main.m3u8', as: 'fetch' },
+      ];
+      vturbPreloads.forEach(({ href, as }) => {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.href = href;
+        link.as = as;
+        if (as === 'fetch') link.crossOrigin = 'anonymous';
+        document.head.appendChild(link);
+      });
+
+      // Also inject VTurb speed optimizer early
+      const plt = document.createElement('script');
+      plt.textContent = '!function(i,n){i._plt=i._plt||(n&&n.timeOrigin?n.timeOrigin+n.now():Date.now())}(window,performance);';
+      document.head.appendChild(plt);
     } else if (screen === 'vsl') {
       trackEvent('VSLView');
 
-      // Inject VTurb player script (v4 web component)
+      // Inject VTurb player script (v4 web component) — resources already preloaded
       const s = document.createElement('script');
       s.src = 'https://scripts.converteai.net/b6a53cb5-aa1a-47b3-af2b-b93c7fe8b86c/players/69d45bc3ea7d2fe7052ee466/v4/player.js';
       s.async = true;
