@@ -122,6 +122,7 @@ export default function App() {
   const notifIndexRef = useRef(0);
   const notifTimersRef = useRef([]);
   const vacanciesRef = useRef(CONFIG.initialVacancies);
+  const ctaRef = useRef(null);
 
   // Gera os tempos das 21 notificações espalhados organicamente em 565s
   // Cada notificação = -1 vaga. 23 → 2 = 21 notificações.
@@ -186,6 +187,12 @@ export default function App() {
         setPitchRevealed(true);
         setCtaVisible(true);
         trackEvent('CTAVisible', { secondsElapsed: CONFIG.pitchSeconds });
+        // Auto-scroll até o CTA no mobile (espera animação de entrada)
+        setTimeout(() => {
+          if (ctaRef.current) {
+            ctaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 700);
       }, CONFIG.pitchSeconds * 1000);
 
       return () => {
@@ -270,14 +277,16 @@ export default function App() {
   const inlineStyles = {
     container: {
       minHeight: '100vh',
+      minHeight: '100dvh',
       background: 'linear-gradient(135deg, #1a0f08 0%, #2d1a0e 50%, #1a0f08 100%)',
       color: '#fff8f0',
       fontFamily: "'Nunito', system-ui, -apple-system, sans-serif",
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      padding: '20px',
+      padding: '16px',
       boxSizing: 'border-box',
+      WebkitOverflowScrolling: 'touch',
     },
     wrapper: {
       width: '100%',
@@ -293,9 +302,9 @@ export default function App() {
       border: '1px solid rgba(212, 160, 60, 0.3)',
       padding: '8px 16px',
       borderRadius: '99px',
-      fontSize: '14px',
+      fontSize: '13px',
       fontWeight: '600',
-      marginBottom: '24px',
+      marginBottom: '20px',
       display: 'inline-block',
       color: '#d4a03c'
     },
@@ -303,12 +312,12 @@ export default function App() {
       fontSize: '22px',
       fontWeight: '800',
       lineHeight: '1.3',
-      marginBottom: '16px',
+      marginBottom: '12px',
     },
     subtitle: {
-      fontSize: '16px',
+      fontSize: '15px',
       color: '#c4a882',
-      marginBottom: '24px',
+      marginBottom: '20px',
       lineHeight: '1.5'
     },
     buttonStart: {
@@ -316,33 +325,35 @@ export default function App() {
       background: 'linear-gradient(90deg, #d4a03c 0%, #b8860b 100%)',
       color: '#1a0f08',
       border: 'none',
-      borderRadius: '12px',
+      borderRadius: '14px',
       padding: '18px 24px',
       fontSize: '18px',
       fontWeight: '800',
       cursor: 'pointer',
       boxShadow: '0 4px 15px rgba(212, 160, 60, 0.4)',
-      marginTop: '20px',
+      marginTop: '16px',
       marginBottom: '12px',
-      transition: 'transform 0.2s'
+      transition: 'transform 0.15s, opacity 0.15s',
+      minHeight: '56px',
+      WebkitTapHighlightColor: 'transparent',
     },
     benefitsList: {
       listStyle: 'none',
       padding: 0,
       margin: 0,
-      marginBottom: '32px'
+      marginBottom: '24px'
     },
     benefitItem: {
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      marginBottom: '12px',
-      fontSize: '16px'
+      marginBottom: '14px',
+      fontSize: '15px'
     },
     progressBarBg: {
-      height: '8px',
+      height: '6px',
       background: 'rgba(255,255,255,0.1)',
-      borderRadius: '4px',
+      borderRadius: '3px',
       overflow: 'hidden',
       marginBottom: '8px'
     },
@@ -350,38 +361,38 @@ export default function App() {
       height: '100%',
       background: 'linear-gradient(90deg, #d4a03c 0%, #c77b2a 100%)',
       transition: 'width 0.5s ease',
-      borderRadius: '4px'
+      borderRadius: '3px'
     },
     timerBox: {
-      padding: '12px',
+      padding: '14px',
       background: 'rgba(0,0,0,0.4)',
       border: `2px solid ${isUrgent ? '#ef4444' : 'rgba(255,255,255,0.2)'}`,
-      borderRadius: '8px',
+      borderRadius: '10px',
       textAlign: 'center',
       fontWeight: 'bold',
-      fontSize: '18px',
+      fontSize: '17px',
       marginTop: '20px',
       marginBottom: '12px',
       animation: isUrgent ? 'pulse-btn-red 1s infinite' : 'none'
     },
     vacanciesBox: {
-      padding: '12px',
+      padding: '14px',
       background: 'rgba(239, 68, 68, 0.1)',
-      borderRadius: '8px',
+      borderRadius: '10px',
       textAlign: 'center',
       fontWeight: '600',
       fontSize: '15px',
       color: '#ef4444',
-      marginBottom: '24px'
+      marginBottom: '20px'
     },
     ctaButton: {
       width: '100%',
       background: 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)',
       color: 'white',
       border: 'none',
-      borderRadius: '12px',
+      borderRadius: '14px',
       padding: '20px 24px',
-      fontSize: '18px',
+      fontSize: '17px',
       fontWeight: '800',
       cursor: 'pointer',
       boxShadow: '0 4px 15px rgba(34, 197, 94, 0.4)',
@@ -389,7 +400,9 @@ export default function App() {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: '6px'
+      gap: '6px',
+      minHeight: '64px',
+      WebkitTapHighlightColor: 'transparent',
     }
   };
 
@@ -397,9 +410,15 @@ export default function App() {
     <div style={inlineStyles.container}>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        /* Mobile-first responsive headline */
         @media (min-width: 480px) {
           .headline-text { font-size: 26px !important; }
         }
+        @media (max-width: 360px) {
+          .headline-text { font-size: 19px !important; }
+        }
+
         @keyframes pulse-btn {
           0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
           70% { transform: scale(1.03); box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); }
@@ -443,19 +462,26 @@ export default function App() {
           background: rgba(212, 160, 60, 0.08);
           border: 1px solid rgba(212, 160, 60, 0.2);
           border-radius: 12px;
-          padding: 16px;
+          padding: 14px 16px;
           color: #fff8f0;
           text-align: left;
-          font-size: 16px;
+          font-size: 15px;
           font-family: 'Nunito', system-ui, sans-serif;
           cursor: pointer;
-          transition: all 0.2s ease;
-          min-height: 56px;
+          transition: all 0.15s ease;
+          min-height: 52px;
           width: 100%;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
         }
         .option-btn:hover {
           background: rgba(212, 160, 60, 0.18);
+          border-color: #d4a03c;
+        }
+        .option-btn:active {
+          transform: scale(0.98);
+          background: rgba(212, 160, 60, 0.25);
           border-color: #d4a03c;
         }
         .option-btn.selected {
@@ -463,32 +489,43 @@ export default function App() {
           border-color: rgba(255, 248, 240, 0.8);
           color: #1a0f08;
           box-shadow: 0 0 15px rgba(212, 160, 60, 0.4);
+          transform: scale(1);
         }
 
         .notif-popup {
           position: fixed;
-          bottom: 20px;
+          bottom: calc(80px + env(safe-area-inset-bottom, 0px));
           left: 50%;
           transform: translateX(-50%);
-          width: 90%;
-          max-width: 440px;
+          width: 92%;
+          max-width: 400px;
           background: #fff8f0;
           color: #3d2814;
           border-radius: 12px;
-          padding: 12px 16px;
+          padding: 10px 14px;
           display: flex;
           align-items: center;
-          gap: 12px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+          gap: 10px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
           z-index: 50;
           animation: slide-up-fade 4000ms forwards;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 600;
           font-family: 'Nunito', system-ui, sans-serif;
         }
 
         .pitch-reveal-enter {
           animation: slide-in-bottom 0.6s ease-out forwards;
+        }
+
+        /* VTurb player responsive */
+        vturb-smartplayer {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 auto !important;
+          border-radius: 8px;
+          overflow: hidden;
         }
       `}</style>
       
@@ -515,8 +552,10 @@ export default function App() {
 
             <button 
               style={inlineStyles.buttonStart} 
-              onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-              onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+              onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
+              onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
               onClick={handleStart}
             >
               Comenzar Quiz Gratis →
@@ -604,10 +643,13 @@ export default function App() {
             </p>
 
             {/* VTurb Player v4 Web Component */}
-            <vturb-smartplayer
-              id="vid-69d45bc3ea7d2fe7052ee466"
-              style={{ display: 'block', margin: '0 auto', width: '100%', maxWidth: '400px' }}
-            />
+            {/* VTurb Player — full width on mobile */}
+            <div style={{ width: '100%', borderRadius: '8px', overflow: 'hidden' }}>
+              <vturb-smartplayer
+                id="vid-69d45bc3ea7d2fe7052ee466"
+                style={{ display: 'block', width: '100%' }}
+              />
+            </div>
 
             {/* === TUDO ABAIXO APARECE SÓ APÓS O PITCH (565s) === */}
             {pitchRevealed && (
@@ -621,7 +663,7 @@ export default function App() {
                 </div>
 
                 {ctaVisible && (
-                  <div style={{ animation: 'slide-in-bottom 0.5s ease-out forwards', marginTop: '8px' }}>
+                  <div ref={ctaRef} style={{ animation: 'slide-in-bottom 0.5s ease-out forwards', marginTop: '8px' }}>
                     <button 
                       style={inlineStyles.ctaButton}
                       onClick={() => {
