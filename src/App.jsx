@@ -258,6 +258,7 @@ export default function App() {
     setSelectedOption(option);
     trackEvent('QuizStep', { step: currentQ + 1, answer: option });
 
+    // FAST TRANSITIONS: 150ms feedback, 150ms fade
     setTimeout(() => {
       if (currentQ < QUESTIONS.length - 1) {
         setAnimatingOut(true);
@@ -265,21 +266,22 @@ export default function App() {
           setCurrentQ(prev => prev + 1);
           setSelectedOption(null);
           setAnimatingOut(false);
-        }, 200);
+        }, 150);
       } else {
         setScreen('loading');
         trackEvent('QuizComplete', { totalSteps: QUESTIONS.length });
         startLoadingSequence();
       }
-    }, 400);
+    }, 150);
   };
 
   const startLoadingSequence = () => {
+    // FAST LOADING: 1800ms total
     const texts = [
       { t: "⚙️ Analizando tus respuestas...", delay: 0 },
-      { t: "📊 Creando tu perfil personalizado...", delay: 800 },
-      { t: "🎯 Identificando tu mejor plan...", delay: 1600 },
-      { t: "✅ ¡Tu plan está listo!", delay: 2400 }
+      { t: "📊 Creando tu perfil...", delay: 500 },
+      { t: "🎯 Identificando ruta...", delay: 1000 },
+      { t: "✅ ¡Tu plan está listo!", delay: 1500 }
     ];
 
     texts.forEach(({ t, delay }) => {
@@ -288,14 +290,14 @@ export default function App() {
 
     let progress = 0;
     const interval = setInterval(() => {
-      progress += (100 / (3500 / 50));
+      progress += (100 / (1800 / 50));
       setLoadingProgress(Math.min(progress, 100));
     }, 50);
 
     setTimeout(() => {
       clearInterval(interval);
       setScreen('vsl');
-    }, 3500);
+    }, 1800);
   };
 
   const formatTime = (seconds) => {
