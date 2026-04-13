@@ -1,41 +1,99 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
+// ============================================================
+// CONFIG
+// ============================================================
 const CONFIG = {
+  pixelId: '1525719689076260',  // FIX 11: Centralizado no CONFIG
   hotmartUrl: "https://pay.hotmart.com/F105278692O?checkoutMode=10",
-  pitchSeconds: 565,               // tudo aparece após o pitch (565s do vídeo)
+  pitchSeconds: 565,               // tudo aparece após o pitch (565s do vídeo) — NÃO ALTERAR
   urgencyMinutes: 15,              // timer de urgência (inicia só após o pitch)
   initialVacancies: 23,            // vagas iniciais
   minVacancies: 2,                 // vagas mínimas (nunca chega a 0)
-  // PIXEL META: NÃO ATIVADO — será ativado quando o usuário confirmar
-  // metaPixelId: "1525719689076260",
 };
 
-function trackEvent(eventName, params = {}) {
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({ event: eventName, ...params });
+// ============================================================
+// FIX 11 — PIXEL SYSTEM — Fora do componente React
+// ============================================================
+const pixelEventQueue = [];
+let pixelInitialized = false;
 
-  if (typeof window.fbq === 'function') {
-    // Eventos PADRÃO do Meta → aparecem automaticamente no Gerenciador de Anúncios
-    const standardEventMap = {
-      'QuizStart':    () => window.fbq('track', 'ViewContent', { content_name: 'Quiz Iniciado', content_category: 'quiz' }),
-      'QuizStep':     () => window.fbq('trackCustom', 'QuizStep', params),
-      'QuizComplete': () => window.fbq('track', 'CompleteRegistration', { content_name: 'Quiz Completo', status: true }),
-      'VSLView':      () => window.fbq('track', 'Lead', { content_name: 'VSL Aberta', content_category: 'vsl' }),
-      'CTAVisible':   () => window.fbq('trackCustom', 'CTAVisible', params),
-      'CTAClick':     () => window.fbq('track', 'InitiateCheckout', { content_name: 'CTA Clicado', value: 0, currency: 'BRL' }),
-    };
-
-    if (standardEventMap[eventName]) {
-      standardEventMap[eventName]();
-    } else {
+function flushPixelQueue() {
+  while (pixelEventQueue.length > 0) {
+    const { eventName, params } = pixelEventQueue.shift();
+    if (typeof window.fbq === 'function') {
       window.fbq('trackCustom', eventName, params);
     }
   }
 }
 
+function initPixel(pixelId) {
+  // Se fbq já existe (pixel no index.html carregou), apenas registrar
+  if (typeof window.fbq === 'function') {
+    pixelInitialized = true;
+    flushPixelQueue();
+    return;
+  }
+
+  // Injetar pixel programaticamente via document.body (mais confiável em WebView)
+  !function(f,b,e,v,n,t,s){
+    if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s);
+  }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+
+  window.fbq('init', pixelId);
+  window.fbq('track', 'PageView');
+
+  // Aguardar fbevents.js carregar para fazer flush da fila
+  const checkReady = setInterval(() => {
+    if (typeof window.fbq === 'function' && window.fbq.loaded) {
+      clearInterval(checkReady);
+      pixelInitialized = true;
+      flushPixelQueue();
+    }
+  }, 100);
+
+  // Timeout de segurança: após 5 segundos, tentar flush mesmo assim
+  setTimeout(() => {
+    clearInterval(checkReady);
+    if (!pixelInitialized) {
+      pixelInitialized = true;
+      flushPixelQueue();
+    }
+  }, 5000);
+}
+
+// ============================================================
+// FIX 11 — trackEvent atualizado com fila
+// ============================================================
+function trackEvent(eventName, params = {}) {
+  // GTM dataLayer sempre funciona (não depende de fbq)
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ event: eventName, ...params });
+
+  // Meta Pixel — usar fila se pixel ainda não carregou
+  if (typeof window.fbq === 'function') {
+    window.fbq('trackCustom', eventName, params);
+  } else {
+    // Enfileirar para disparar quando pixel estiver pronto
+    pixelEventQueue.push({ eventName, params });
+  }
+
+  // FIX 6: Log apenas em dev
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
+    console.log('[QUIZ TRACK]', eventName, params);
+  }
+}
+
+// ============================================================
+// FIX 5 — 4 perguntas (removidas Q2 e Q5)
+// ============================================================
 const QUESTIONS = [
   {
-    progress: 15,
+    progress: 20,
     headline: "¿Cuál de estas situaciones describe mejor tu momento actual?",
     subtitle: "(No hay respuestas incorrectas — esto nos ayuda a personalizar tu plan)",
     options: [
@@ -43,17 +101,6 @@ const QUESTIONS = [
       "💼 Trabajo pero el sueldo no me alcanza para todo",
       "😰 Quiero algo extra pero no sé por dónde empezar",
       "✨ Me encanta cocinar y quiero convertirlo en dinero"
-    ]
-  },
-  {
-    progress: 30,
-    headline: "¿Cuánto tiempo llevas pensando en generar dinero desde casa?",
-    subtitle: "(La mayoría de las mujeres llevan más tiempo del que creen...)",
-    options: [
-      "⏰ Apenas empecé a pensarlo (menos de 1 mes)",
-      "📅 Varios meses, pero no he encontrado cómo hacerlo",
-      "😤 Más de un año buscando algo que realmente funcione",
-      "💔 Ya intenté algo antes, pero no me resultó como esperaba"
     ]
   },
   {
@@ -68,7 +115,7 @@ const QUESTIONS = [
     ]
   },
   {
-    progress: 60,
+    progress: 70,
     headline: "Si pudieras ganar $200–$300 dólares extra este mes, ¿qué harías con ese dinero?",
     subtitle: "(Piénsalo de verdad — tu respuesta va a personalizar tu plan)",
     options: [
@@ -76,17 +123,6 @@ const QUESTIONS = [
       "👨‍👩‍👧 Darles más a mis hijos: ropa, útiles, actividades",
       "🌟 Ahorrar para algo importante: viaje, remodelación, emergencias",
       "💪 Tener MI PROPIO dinero y no depender de nadie más"
-    ]
-  },
-  {
-    progress: 75,
-    headline: "¿Cómo describirías tu habilidad en la cocina?",
-    subtitle: "⚠️ Importante: el Método Flan Sin Horno NO requiere experiencia previa",
-    options: [
-      "👩‍🍳 Cocino muy bien — me encantan los postres",
-      "🙂 Cocino lo básico y me defiendo bien",
-      "😅 No cocino mucho, pero aprendería algo sencillo",
-      "❓ Nunca he preparado postres, pero me llama la atención"
     ]
   },
   {
@@ -124,26 +160,26 @@ export default function App() {
   const [loadingProgress, setLoadingProgress] = useState(0);
 
   // VSL Screen States
-  const [pitchRevealed, setPitchRevealed] = useState(false); // TUDO aparece só após o pitch
+  const [pitchRevealed, setPitchRevealed] = useState(false);
   const [ctaVisible, setCtaVisible] = useState(false);
   const [vacancies, setVacancies] = useState(CONFIG.initialVacancies);
   const [timeRemaining, setTimeRemaining] = useState(CONFIG.urgencyMinutes * 60);
   const [currentNotification, setCurrentNotification] = useState('');
   const [notificationVisible, setNotificationVisible] = useState(false);
 
-  const notifIndexRef = useRef(0);
+  // FIX 3 — Ref síncrono para evitar race condition no auto-advance
+  const isAdvancingRef = useRef(false);
+
   const notifTimersRef = useRef([]);
   const vacanciesRef = useRef(CONFIG.initialVacancies);
   const ctaRef = useRef(null);
 
   // Gera os tempos das 21 notificações espalhados organicamente em 565s
-  // Cada notificação = -1 vaga. 23 → 2 = 21 notificações.
   const generateNotificationSchedule = useCallback(() => {
-    const totalNotifs = CONFIG.initialVacancies - CONFIG.minVacancies; // 21
-    const totalTime = CONFIG.pitchSeconds; // 565s
+    const totalNotifs = CONFIG.initialVacancies - CONFIG.minVacancies;
+    const totalTime = CONFIG.pitchSeconds;
     const times = [];
 
-    // Gera 21 tempos aleatórios entre 10s e 555s, garante espaçamento mínimo
     for (let i = 0; i < totalNotifs; i++) {
       const baseTime = (totalTime / totalNotifs) * i;
       const jitter = (Math.random() - 0.5) * (totalTime / totalNotifs) * 0.6;
@@ -151,7 +187,6 @@ export default function App() {
       times.push(Math.round(t));
     }
 
-    // Ordena e garante espaçamento mínimo de 8s entre notificações
     times.sort((a, b) => a - b);
     for (let i = 1; i < times.length; i++) {
       if (times[i] - times[i - 1] < 8) {
@@ -162,12 +197,14 @@ export default function App() {
     return times;
   }, []);
 
+  // ============================================================
+  // MAIN EFFECT — screen changes
+  // ============================================================
   useEffect(() => {
-    if (screen === 'start') {
-      trackEvent('QuizStart');
-    } else if (screen === 'loading') {
-      // Preload VTurb resources during the 3.5s loading animation
-      // By the time VSL screen mounts, everything is cached
+    // FIX 2 — QuizStart REMOVIDO daqui (movido para handleStart)
+
+    if (screen === 'loading') {
+      // Preload VTurb resources during the loading animation
       const vturbPreloads = [
         { href: 'https://scripts.converteai.net/b6a53cb5-aa1a-47b3-af2b-b93c7fe8b86c/players/69d45bc3ea7d2fe7052ee466/v4/player.js', as: 'script' },
         { href: 'https://scripts.converteai.net/lib/js/smartplayer-wc/v4/smartplayer.js', as: 'script' },
@@ -182,21 +219,22 @@ export default function App() {
         document.head.appendChild(link);
       });
 
-      // Also inject VTurb speed optimizer early
       const plt = document.createElement('script');
       plt.textContent = '!function(i,n){i._plt=i._plt||(n&&n.timeOrigin?n.timeOrigin+n.now():Date.now())}(window,performance);';
       document.head.appendChild(plt);
     } else if (screen === 'vsl') {
       trackEvent('VSLView');
 
-      // Inject VTurb player script (v4 web component) — resources already preloaded
-      const s = document.createElement('script');
-      s.src = 'https://scripts.converteai.net/b6a53cb5-aa1a-47b3-af2b-b93c7fe8b86c/players/69d45bc3ea7d2fe7052ee466/v4/player.js';
-      s.async = true;
-      document.head.appendChild(s);
+      // FIX 8 — Injetar VTurb script via document.body (mais compatível com WebView)
+      if (!document.querySelector('script[data-id="69d45bc3ea7d2fe7052ee466"]')) {
+        const s = document.createElement('script');
+        s.src = 'https://scripts.converteai.net/b6a53cb5-aa1a-47b3-af2b-b93c7fe8b86c/players/69d45bc3ea7d2fe7052ee466/v4/player.js';
+        s.setAttribute('data-id', '69d45bc3ea7d2fe7052ee466');
+        s.async = true;
+        document.body.appendChild(s); // body, não head — mais compatível com WebView
+      }
 
       // Agenda 21 notificações espalhadas ao longo dos 565s do vídeo
-      // Cada uma diminui 1 vaga. No final = exatamente 2 vagas.
       const schedule = generateNotificationSchedule();
       const timers = schedule.map((timeInSec, i) => {
         return setTimeout(() => {
@@ -204,23 +242,20 @@ export default function App() {
           setCurrentNotification(NOTIFICATIONS[idx]);
           setNotificationVisible(true);
 
-          // -1 vaga
           vacanciesRef.current = CONFIG.initialVacancies - (i + 1);
           if (vacanciesRef.current < CONFIG.minVacancies) vacanciesRef.current = CONFIG.minVacancies;
           setVacancies(vacanciesRef.current);
 
-          // Esconde após 4s
           setTimeout(() => setNotificationVisible(false), 4000);
         }, timeInSec * 1000);
       });
       notifTimersRef.current = timers;
 
-      // Timer do pitch: após 565 segundos, revela timer + vagas + CTA
+      // Timer do pitch: após pitchSeconds, revela timer + vagas + CTA — NÃO ALTERAR
       const pitchTimer = setTimeout(() => {
         setPitchRevealed(true);
         setCtaVisible(true);
         trackEvent('CTAVisible', { secondsElapsed: CONFIG.pitchSeconds });
-        // Auto-scroll até o CTA no mobile (espera animação de entrada)
         setTimeout(() => {
           if (ctaRef.current) {
             ctaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -234,6 +269,11 @@ export default function App() {
       };
     }
   }, [screen, generateNotificationSchedule]);
+
+  // FIX 11 — initPixel como PRIMEIRA coisa no mount
+  useEffect(() => {
+    initPixel(CONFIG.pixelId);
+  }, []);
 
   // Timer de urgência — só conta quando pitchRevealed = true
   useEffect(() => {
@@ -249,16 +289,25 @@ export default function App() {
     return () => clearInterval(urgencyTimer);
   }, [pitchRevealed]);
 
+  // ============================================================
+  // FIX 2 — QuizStart no clique do botão (não no mount)
+  // ============================================================
   const handleStart = () => {
+    trackEvent('QuizStart');
     setScreen('quiz');
   };
 
+  // ============================================================
+  // FIX 3 — Race condition fix com ref síncrono
+  // FIX 4 — Checkmark visual feedback integrado na renderização
+  // ============================================================
   const handleOptionClick = (option) => {
-    if (selectedOption) return;
+    if (isAdvancingRef.current) return;
+    isAdvancingRef.current = true;
+
     setSelectedOption(option);
     trackEvent('QuizStep', { step: currentQ + 1, answer: option });
 
-    // FAST TRANSITIONS: 150ms feedback, 150ms fade
     setTimeout(() => {
       if (currentQ < QUESTIONS.length - 1) {
         setAnimatingOut(true);
@@ -266,17 +315,17 @@ export default function App() {
           setCurrentQ(prev => prev + 1);
           setSelectedOption(null);
           setAnimatingOut(false);
+          isAdvancingRef.current = false;
         }, 150);
       } else {
-        setScreen('loading');
         trackEvent('QuizComplete', { totalSteps: QUESTIONS.length });
+        setScreen('loading');
         startLoadingSequence();
       }
-    }, 150);
+    }, 350);
   };
 
   const startLoadingSequence = () => {
-    // FAST LOADING: 1800ms total
     const texts = [
       { t: "⚙️ Analizando tus respuestas...", delay: 0 },
       { t: "📊 Creando tu perfil...", delay: 500 },
@@ -309,17 +358,21 @@ export default function App() {
   const currentQuestionData = QUESTIONS[currentQ];
   const isUrgent = timeRemaining < 180;
 
+  // ============================================================
+  // FIX 1 — Background bege quente + cores atualizadas
+  // FIX 7 — Legibilidade mobile (fonte, espaçamento, touch targets)
+  // ============================================================
   const inlineStyles = {
     container: {
       minHeight: '100vh',
       minHeight: '100dvh',
-      background: 'linear-gradient(135deg, #1a0f08 0%, #2d1a0e 50%, #1a0f08 100%)',
-      color: '#fff8f0',
+      background: '#f7f3ee', // FIX 1: bege quente
+      color: '#2d1b0e',      // FIX 1: texto escuro
       fontFamily: "'Nunito', system-ui, -apple-system, sans-serif",
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      padding: '16px',
+      padding: '20px 20px', // FIX 7: padding mínimo 20px
       boxSizing: 'border-box',
       WebkitOverflowScrolling: 'touch',
     },
@@ -333,43 +386,44 @@ export default function App() {
       flex: 1
     },
     badge: {
-      background: 'rgba(212, 160, 60, 0.15)',
-      border: '1px solid rgba(212, 160, 60, 0.3)',
+      background: '#d63031', // FIX 1: badge vermelho
+      border: 'none',
       padding: '8px 16px',
       borderRadius: '99px',
       fontSize: '13px',
-      fontWeight: '600',
+      fontWeight: '700',
       marginBottom: '20px',
       display: 'inline-block',
-      color: '#d4a03c'
+      color: '#ffffff' // FIX 1: branco sobre vermelho
     },
     headline: {
-      fontSize: '22px',
+      fontSize: 'clamp(18px, 4.5vw, 22px)', // FIX 7: responsivo
       fontWeight: '800',
-      lineHeight: '1.3',
+      lineHeight: '1.4', // FIX 7
       marginBottom: '12px',
+      color: '#2d1b0e',
     },
     subtitle: {
       fontSize: '15px',
-      color: '#c4a882',
+      color: '#6b4c38', // FIX 1: legível em fundo claro
       marginBottom: '20px',
       lineHeight: '1.5'
     },
     buttonStart: {
       width: '100%',
-      background: 'linear-gradient(90deg, #d4a03c 0%, #b8860b 100%)',
-      color: '#1a0f08',
+      background: 'linear-gradient(135deg, #d63031, #c0392b)', // FIX 1: vermelho
+      color: '#ffffff',
       border: 'none',
       borderRadius: '14px',
       padding: '18px 24px',
       fontSize: '18px',
       fontWeight: '800',
       cursor: 'pointer',
-      boxShadow: '0 4px 15px rgba(212, 160, 60, 0.4)',
+      boxShadow: '0 6px 24px rgba(214,48,49,0.35)', // FIX 1
       marginTop: '16px',
       marginBottom: '12px',
       transition: 'transform 0.15s, opacity 0.15s',
-      minHeight: '56px',
+      minHeight: '60px', // FIX 7: touch target
       WebkitTapHighlightColor: 'transparent',
     },
     benefitsList: {
@@ -383,36 +437,38 @@ export default function App() {
       alignItems: 'center',
       gap: '12px',
       marginBottom: '14px',
-      fontSize: '15px'
+      fontSize: '15px',
+      color: '#3d2b1f', // FIX 1
     },
     progressBarBg: {
-      height: '6px',
-      background: 'rgba(255,255,255,0.1)',
-      borderRadius: '3px',
+      height: '10px', // FIX 7: mais visível (era 6px)
+      background: 'rgba(0,0,0,0.08)', // FIX 1: fundo claro
+      borderRadius: '5px',
       overflow: 'hidden',
       marginBottom: '8px'
     },
     progressBarFill: {
       height: '100%',
-      background: 'linear-gradient(90deg, #d4a03c 0%, #c77b2a 100%)',
+      background: 'linear-gradient(90deg, #d63031, #ff7675)', // FIX 1: vermelho
       transition: 'width 0.5s ease',
-      borderRadius: '3px'
+      borderRadius: '5px'
     },
     timerBox: {
       padding: '14px',
-      background: 'rgba(0,0,0,0.4)',
-      border: `2px solid ${isUrgent ? '#ef4444' : 'rgba(255,255,255,0.2)'}`,
+      background: 'rgba(0,0,0,0.06)', // FIX 1
+      border: `2px solid ${isUrgent ? '#ef4444' : '#e0d4ca'}`,
       borderRadius: '10px',
       textAlign: 'center',
       fontWeight: 'bold',
       fontSize: '17px',
+      color: '#2d1b0e', // FIX 1
       marginTop: '20px',
       marginBottom: '12px',
       animation: isUrgent ? 'pulse-btn-red 1s infinite' : 'none'
     },
     vacanciesBox: {
       padding: '14px',
-      background: 'rgba(239, 68, 68, 0.1)',
+      background: 'rgba(239, 68, 68, 0.08)', // FIX 1
       borderRadius: '10px',
       textAlign: 'center',
       fontWeight: '600',
@@ -446,12 +502,12 @@ export default function App() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        /* Mobile-first responsive headline */
+        /* FIX 7: Mobile-first responsive headline */
         @media (min-width: 480px) {
           .headline-text { font-size: 26px !important; }
         }
         @media (max-width: 360px) {
-          .headline-text { font-size: 19px !important; }
+          .headline-text { font-size: 18px !important; }
         }
 
         @keyframes pulse-btn {
@@ -465,8 +521,8 @@ export default function App() {
           100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
         @keyframes flash-red {
-          0% { background-color: rgba(239, 68, 68, 0.4); }
-          100% { background-color: rgba(239, 68, 68, 0.1); }
+          0% { background-color: rgba(239, 68, 68, 0.15); }
+          100% { background-color: rgba(239, 68, 68, 0.08); }
         }
         @keyframes slide-in-bottom {
           0% { transform: translateY(100px); opacity: 0; }
@@ -485,68 +541,75 @@ export default function App() {
         .anim-fade-out {
           opacity: 0;
           transform: translateX(-20px);
-          transition: all 200ms ease;
+          transition: all 150ms ease;
         }
         .anim-fade-in {
           opacity: 1;
           transform: translateX(0);
-          transition: all 300ms ease;
+          transition: all 250ms ease;
         }
         
+        /* FIX 1 + FIX 7: option-btn com cores claras e touch targets maiores */
         .option-btn {
-          background: rgba(212, 160, 60, 0.08);
-          border: 1px solid rgba(212, 160, 60, 0.2);
+          background: #ffffff;
+          border: 2px solid #e0d4ca;
           border-radius: 12px;
-          padding: 14px 16px;
-          color: #fff8f0;
+          padding: 16px 18px;
+          color: #3d2b1f;
           text-align: left;
           font-size: 15px;
           font-family: 'Nunito', system-ui, sans-serif;
           cursor: pointer;
           transition: all 0.15s ease;
-          min-height: 52px;
+          min-height: 60px;
           width: 100%;
           margin-bottom: 10px;
           -webkit-tap-highlight-color: transparent;
           touch-action: manipulation;
+          line-height: 1.4;
+          display: flex;
+          align-items: center;
         }
         .option-btn:hover {
-          background: rgba(212, 160, 60, 0.18);
-          border-color: #d4a03c;
+          background: #fff5f5;
+          border-color: #d63031;
         }
         .option-btn:active {
           transform: scale(0.98);
-          background: rgba(212, 160, 60, 0.25);
-          border-color: #d4a03c;
+          background: #fff0f0;
+          border-color: #d63031;
         }
+        /* FIX 1: estado selecionado */
         .option-btn.selected {
-          background: linear-gradient(90deg, #d4a03c, #c77b2a);
-          border-color: rgba(255, 248, 240, 0.8);
-          color: #1a0f08;
-          box-shadow: 0 0 15px rgba(212, 160, 60, 0.4);
+          background: linear-gradient(135deg, #fff0f0, #ffe8e8);
+          border-color: #d63031;
+          color: #c0392b;
+          box-shadow: 0 0 12px rgba(214, 48, 49, 0.15);
           transform: scale(1);
         }
 
+        /* FIX 10: safe-area-inset para notificações */
         .notif-popup {
           position: fixed;
-          bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+          bottom: max(20px, env(safe-area-inset-bottom));
           left: 50%;
           transform: translateX(-50%);
           width: 92%;
           max-width: 400px;
-          background: #fff8f0;
-          color: #3d2814;
+          background: #ffffff;
+          color: #3d2b1f;
           border-radius: 12px;
           padding: 10px 14px;
           display: flex;
           align-items: center;
           gap: 10px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.15);
           z-index: 50;
           animation: slide-up-fade 4000ms forwards;
           font-size: 13px;
           font-weight: 600;
           font-family: 'Nunito', system-ui, sans-serif;
+          border: 1px solid #e0d4ca;
         }
 
         .pitch-reveal-enter {
@@ -576,11 +639,11 @@ export default function App() {
               ¿Sabías que miles de mujeres ya generan ingresos vendiendo postres caseros?
             </h1>
             <p style={inlineStyles.subtitle}>
-              Responde 6 preguntas rápidas y descubre si este método es para ti — adaptado a tu situación.
+              Responde 4 preguntas rápidas y descubre si este método es para ti — adaptado a tu situación.
             </p>
             
             <ul style={inlineStyles.benefitsList}>
-              <li style={inlineStyles.benefitItem}><span>✅</span> Solo toma 2 minutos</li>
+              <li style={inlineStyles.benefitItem}><span>✅</span> Solo toma 1 minuto</li>
               <li style={inlineStyles.benefitItem}><span>✅</span> 100% gratis</li>
               <li style={inlineStyles.benefitItem}><span>✅</span> Recibes un plan personalizado</li>
             </ul>
@@ -595,7 +658,7 @@ export default function App() {
             >
               Comenzar Quiz Gratis →
             </button>
-            <p style={{ textAlign: 'center', color: '#c4a882', fontSize: '12px' }}>
+            <p style={{ textAlign: 'center', color: '#6b4c38', fontSize: '12px' }}>
               🔒 Tus respuestas son privadas y confidenciales
             </p>
           </div>
@@ -604,30 +667,38 @@ export default function App() {
         {/* QUIZ SCREEN */}
         {screen === 'quiz' && (
           <div style={{ marginTop: '2vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', color: '#d4a03c', fontWeight: 'bold' }}>
-              <span style={{ color: '#d4a03c' }}>Pregunta {currentQ + 1} de {QUESTIONS.length}</span>
-              <span style={{ color: '#d4a03c' }}>{currentQuestionData.progress}%</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', color: '#d63031', fontWeight: 'bold' }}>
+              <span>Pregunta {currentQ + 1} de {QUESTIONS.length}</span>
+              <span>{currentQuestionData.progress}%</span>
             </div>
             <div style={inlineStyles.progressBarBg}>
               <div style={{ ...inlineStyles.progressBarFill, width: `${currentQuestionData.progress}%` }}></div>
             </div>
 
             <div className={animatingOut ? "anim-fade-out" : "anim-fade-in"} style={{ marginTop: '32px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px' }}>
+              {/* FIX 7: headline responsiva */}
+              <h2 style={{ fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: '800', marginBottom: '8px', lineHeight: '1.4', color: '#2d1b0e' }}>
                 {currentQuestionData.headline}
               </h2>
-              <p style={{ color: '#c4a882', fontSize: '14px', marginBottom: '24px' }}>
+              {/* FIX 7: subtítulo legível */}
+              <p style={{ color: '#6b4c38', fontSize: '13px', fontStyle: 'italic', marginBottom: '20px', lineHeight: '1.5' }}>
                 {currentQuestionData.subtitle}
               </p>
 
               <div>
+                {/* FIX 4: Checkmark visual feedback */}
                 {currentQuestionData.options.map((option, idx) => (
                   <button
                     key={idx}
                     className={`option-btn ${selectedOption === option ? 'selected' : ''}`}
                     onClick={() => handleOptionClick(option)}
                   >
-                    {option}
+                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <span>{option}</span>
+                      {selectedOption === option && (
+                        <span style={{ color: '#c0392b', fontWeight: 'bold', fontSize: '18px', marginLeft: '8px', flexShrink: 0 }}>✓</span>
+                      )}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -635,19 +706,30 @@ export default function App() {
           </div>
         )}
 
-        {/* LOADING SCREEN */}
+        {/* FIX 9 — LOADING SCREEN com contexto visual */}
         {screen === 'loading' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: '60vh' }}>
+            {/* FIX 9: Badge de contexto */}
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <span style={{
+                background: '#d63031', color: '#fff',
+                padding: '4px 12px', borderRadius: '99px',
+                fontSize: '12px', fontWeight: '700',
+              }}>
+                Preparando tu resultado
+              </span>
+            </div>
+
             <div style={{ 
               width: '60px', height: '60px', 
-              border: '4px solid rgba(255,255,255,0.1)', 
-              borderTopColor: '#d4a03c', 
+              border: '4px solid rgba(0,0,0,0.08)', 
+              borderTopColor: '#d63031', // FIX 1: vermelho
               borderRadius: '50%', 
               animation: 'spin 1s linear infinite',
               marginBottom: '32px'
             }}></div>
             
-            <h2 style={{ fontSize: '20px', fontWeight: '600', minHeight: '30px', textAlign: 'center', marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '700', minHeight: '28px', textAlign: 'center', marginBottom: '12px', color: '#2d1b0e' }}>
               {loadingText}
             </h2>
             
@@ -655,30 +737,34 @@ export default function App() {
               <div style={inlineStyles.progressBarBg}>
                 <div style={{ ...inlineStyles.progressBarFill, width: `${loadingProgress}%` }}></div>
               </div>
-              <div style={{ textAlign: 'center', color: '#d4a03c', fontWeight: 'bold', marginTop: '8px' }}>
+              <div style={{ textAlign: 'center', color: '#d63031', fontWeight: 'bold', marginTop: '8px' }}>
                 {Math.floor(loadingProgress)}%
               </div>
             </div>
+
+            {/* FIX 9: instrução para não fechar */}
+            <p style={{ color: '#9b8572', fontSize: '13px', marginTop: '16px' }}>
+              Por favor, no cierres esta página...
+            </p>
           </div>
         )}
 
-        {/* VSL SCREEN */}
+        {/* VSL SCREEN — FIX 1: cores claras */}
         {screen === 'vsl' && (
           <div style={{ marginTop: '2vh' }}>
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <span style={{ background: 'rgba(212, 160, 60, 0.15)', color: '#d4a03c', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: '700' }}>
+              <span style={{ background: 'rgba(214, 48, 49, 0.1)', color: '#d63031', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: '700' }}>
                 🔒 Acceso exclusivo para tu perfil
               </span>
             </div>
-            <h2 className="headline-text" style={{ fontSize: '22px', fontWeight: '800', textAlign: 'center', marginBottom: '12px' }}>
+            <h2 className="headline-text" style={{ fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: '800', textAlign: 'center', marginBottom: '12px', color: '#2d1b0e', lineHeight: '1.4' }}>
               ¡Encontramos exactamente lo que necesitas!
             </h2>
-            <p style={{ textAlign: 'center', color: '#c4a882', marginBottom: '24px', fontSize: '15px' }}>
+            <p style={{ textAlign: 'center', color: '#6b4c38', marginBottom: '24px', fontSize: '15px' }}>
               Basándonos en tus respuestas, preparamos algo especial para ti. Mira este video completo:
             </p>
 
             {/* VTurb Player v4 Web Component */}
-            {/* VTurb Player — full width on mobile */}
             <div style={{ width: '100%', borderRadius: '8px', overflow: 'hidden' }}>
               <vturb-smartplayer
                 id="vid-69d45bc3ea7d2fe7052ee466"
@@ -714,13 +800,13 @@ export default function App() {
                       </span>
                     </button>
                     
-                    <p style={{ textAlign: 'center', fontSize: '14px', marginTop: '16px', color: '#e5e7eb' }}>
+                    <p style={{ textAlign: 'center', fontSize: '14px', marginTop: '16px', color: '#3d2b1f' }}>
                       ⭐⭐⭐⭐⭐ Más de 3.400 mujeres ya aprendieron el método
                     </p>
                   </div>
                 )}
 
-                <p style={{ textAlign: 'center', fontSize: '12px', color: '#ef4444', marginTop: '32px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
+                <p style={{ textAlign: 'center', fontSize: '12px', color: '#ef4444', marginTop: '32px', borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '16px' }}>
                   ⚠️ Atención: Esta oferta especial para participantes del quiz vence hoy a las 23:59
                 </p>
               </div>

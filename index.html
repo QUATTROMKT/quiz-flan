@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#1a0f08" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#f7f3ee" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="description" content="Descubre cómo miles de mujeres generan ingresos extra vendiendo postres caseros. Quiz personalizado gratuito." />
 
     <title>Quiz - Descubre tu Plan Personalizado</title>
 
-    <!-- Meta Pixel Code — LOADS FIRST for accurate tracking -->
+    <!-- Meta Pixel Base Code — LOADS FIRST for accurate tracking -->
     <script>
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -31,38 +31,40 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
 
-    <!-- VTurb: DNS prefetch ONLY — scripts load dynamically after quiz completion -->
-    <link rel="dns-prefetch" href="https://cdn.converteai.net" />
+    <!-- Preconnect para recursos externos (FIX 6) -->
+    <link rel="preconnect" href="https://scripts.converteai.net" />
+    <link rel="preconnect" href="https://images.converteai.net" />
     <link rel="dns-prefetch" href="https://scripts.converteai.net" />
+    <link rel="dns-prefetch" href="https://cdn.converteai.net" />
 
-    <!-- CRITICAL: Inline CSS for instant splash (<50ms paint) — no FOUC -->
+    <!-- CRITICAL: Inline CSS for instant splash (<50ms paint) — FIX 1: bege quente -->
     <style>
       *{margin:0;padding:0;box-sizing:border-box}
-      html,body{background:#1a0f08;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
-      #splash{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;background:linear-gradient(135deg,#1a0f08 0%,#2d1a0e 50%,#1a0f08 100%);font-family:'Nunito',system-ui,-apple-system,sans-serif;color:#fff8f0;padding:24px 16px;text-align:center}
-      .s-badge{background:rgba(212,160,60,.15);border:1px solid rgba(212,160,60,.3);padding:8px 16px;border-radius:99px;font-size:13px;font-weight:600;color:#d4a03c;margin-bottom:20px;display:inline-block}
-      .s-title{font-size:22px;font-weight:800;line-height:1.35;max-width:440px;margin-bottom:14px}
-      .s-sub{font-size:15px;color:#c4a882;line-height:1.5;max-width:400px;margin-bottom:20px}
+      html,body{background:#f7f3ee;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+      #splash{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;background:#f7f3ee;font-family:'Nunito',system-ui,-apple-system,sans-serif;color:#2d1b0e;padding:24px 20px;text-align:center}
+      .s-badge{background:#d63031;border:none;padding:8px 16px;border-radius:99px;font-size:13px;font-weight:700;color:#ffffff;margin-bottom:20px;display:inline-block}
+      .s-title{font-size:clamp(18px,4.5vw,22px);font-weight:800;line-height:1.4;max-width:440px;margin-bottom:14px;color:#2d1b0e}
+      .s-sub{font-size:15px;color:#6b4c38;line-height:1.5;max-width:400px;margin-bottom:20px}
       .s-list{list-style:none;padding:0;margin:0 0 24px;text-align:left;max-width:440px;width:100%}
-      .s-list li{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:15px;color:#fff8f0}
-      .s-btn{width:100%;max-width:440px;background:linear-gradient(90deg,#d4a03c,#b8860b);color:#1a0f08;border:none;border-radius:14px;padding:18px 24px;font-size:18px;font-weight:800;cursor:default;box-shadow:0 4px 15px rgba(212,160,60,.4);min-height:56px;font-family:inherit;opacity:.5;pointer-events:none}
-      .s-load{color:#c4a882;font-size:12px;margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:center}
-      .s-dot{width:6px;height:6px;background:#d4a03c;border-radius:50%;animation:blink 1.2s infinite}
+      .s-list li{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:15px;color:#3d2b1f}
+      .s-btn{width:100%;max-width:440px;background:linear-gradient(135deg,#d63031,#c0392b);color:#ffffff;border:none;border-radius:14px;padding:18px 24px;font-size:18px;font-weight:800;cursor:default;box-shadow:0 6px 24px rgba(214,48,49,.35);min-height:60px;font-family:inherit;opacity:.5;pointer-events:none}
+      .s-load{color:#6b4c38;font-size:12px;margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:center}
+      .s-dot{width:6px;height:6px;background:#d63031;border-radius:50%;animation:blink 1.2s infinite}
       .s-dot:nth-child(2){animation-delay:.2s}
       .s-dot:nth-child(3){animation-delay:.4s}
       @keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
-      @media(max-width:360px){.s-title{font-size:19px}}
+      @media(max-width:360px){.s-title{font-size:18px}}
     </style>
   </head>
   <body>
     <div id="root">
-      <!-- INSTANT SPLASH: visible in <50ms, replaced by React on hydration -->
+      <!-- INSTANT SPLASH: visible in <50ms, replaced by React on hydration — FIX 1: bege quente -->
       <div id="splash">
         <div class="s-badge">🍮 Quiz de Personalización Gratuito</div>
         <div class="s-title">¿Sabías que miles de mujeres ya generan ingresos vendiendo postres caseros?</div>
-        <div class="s-sub">Responde 6 preguntas rápidas y descubre si este método es para ti — adaptado a tu situación.</div>
+        <div class="s-sub">Responde 4 preguntas rápidas y descubre si este método es para ti — adaptado a tu situación.</div>
         <ul class="s-list">
-          <li>✅ Solo toma 2 minutos</li>
+          <li>✅ Solo toma 1 minuto</li>
           <li>✅ 100% gratis</li>
           <li>✅ Recibes un plan personalizado</li>
         </ul>
