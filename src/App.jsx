@@ -521,14 +521,14 @@ export default function App() {
           <div style={{ marginTop: '2vh' }}>
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
               <span style={{ background: 'rgba(214, 48, 49, 0.1)', color: '#d63031', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: '700' }}>
-                🔒 Acceso exclusivo para tu perfil
+                🔴 Revelado: El método paso a paso
               </span>
             </div>
             <h2 className="headline-text" style={{ fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: '800', textAlign: 'center', marginBottom: '12px', color: '#2d1b0e', lineHeight: '1.4' }}>
-              ¡Encontramos exactamente lo que necesitas!
+              Descubre cómo generar $200–$300 dólares extra al mes vendiendo deliciosos postres desde casa
             </h2>
             <p style={{ textAlign: 'center', color: '#6b4c38', marginBottom: '24px', fontSize: '15px' }}>
-              Basándonos en tus respuestas, preparamos algo especial para ti. Mira este video completo:
+              Sube el volumen y mira este breve video hasta el final para entender cómo funciona:
             </p>
 
             {/* VTurb Player v4 Web Component */}
