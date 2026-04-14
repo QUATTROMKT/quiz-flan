@@ -241,8 +241,6 @@ export default function App() {
     const s = (seconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
-
-  const currentQuestionData = QUESTIONS[currentQ];
   const isUrgent = timeRemaining < 180;
 
   // ============================================================
