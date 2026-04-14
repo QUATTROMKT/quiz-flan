@@ -88,55 +88,7 @@ function trackEvent(eventName, params = {}) {
   }
 }
 
-// ============================================================
-// FIX 5 — 4 perguntas (removidas Q2 e Q5)
-// ============================================================
-const QUESTIONS = [
-  {
-    progress: 20,
-    headline: "¿Cuál de estas situaciones describe mejor tu momento actual?",
-    subtitle: "(No hay respuestas incorrectas — esto nos ayuda a personalizar tu plan)",
-    options: [
-      "🏠 Soy ama de casa y quiero tener MI propio dinero",
-      "💼 Trabajo pero el sueldo no me alcanza para todo",
-      "😰 Quiero algo extra pero no sé por dónde empezar",
-      "✨ Me encanta cocinar y quiero convertirlo en dinero"
-    ]
-  },
-  {
-    progress: 45,
-    headline: "¿Qué te ha frenado para tener tu propio negocio desde casa?",
-    subtitle: "(Esto nos ayuda a personalizar exactamente qué mostrarte)",
-    options: [
-      "💸 No tengo dinero para invertir en algo grande",
-      "🤷 No sé hacer algo que la gente quiera comprar y pagar",
-      "📱 No sé cómo conseguir clientes ni vender por redes sociales",
-      "😨 Le tengo miedo al fracaso o a perder mi tiempo"
-    ]
-  },
-  {
-    progress: 70,
-    headline: "Si pudieras ganar $200–$300 dólares extra este mes, ¿qué harías con ese dinero?",
-    subtitle: "(Piénsalo de verdad — tu respuesta va a personalizar tu plan)",
-    options: [
-      "🏥 Pagar deudas, cuentas o gastos del hogar que me preocupan",
-      "👨‍👩‍👧 Darles más a mis hijos: ropa, útiles, actividades",
-      "🌟 Ahorrar para algo importante: viaje, remodelación, emergencias",
-      "💪 Tener MI PROPIO dinero y no depender de nadie más"
-    ]
-  },
-  {
-    progress: 90,
-    headline: "Si te mostramos exactamente cómo hacer flanes que se venden a $5–$15 cada uno desde tu casa... ¿cuándo estarías lista para empezar?",
-    subtitle: "(Esta es la respuesta más importante de todo el quiz)",
-    options: [
-      "🔥 HOY MISMO — estoy lista para comenzar ahora",
-      "📆 Esta semana, cuando entienda bien cómo funciona",
-      "🤔 Este mes, cuando me sienta más preparada",
-      "💭 Todavía no estoy segura, necesito ver más"
-    ]
-  }
-];
+
 
 const NOTIFICATIONS = [
   "🇲🇽 María G. de México acaba de acceder al método",
@@ -150,14 +102,7 @@ const NOTIFICATIONS = [
 ];
 
 export default function App() {
-  const [screen, setScreen] = useState('start');
-  const [currentQ, setCurrentQ] = useState(0);
-  const [animatingOut, setAnimatingOut] = useState(false);
-  const [selectedOption, setSelectedOption] = useState(null);
-
-  // Loading Screen States
-  const [loadingText, setLoadingText] = useState('');
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [screen, setScreen] = useState('vsl');
 
   // VSL Screen States
   const [pitchRevealed, setPitchRevealed] = useState(false);
@@ -289,65 +234,7 @@ export default function App() {
     return () => clearInterval(urgencyTimer);
   }, [pitchRevealed]);
 
-  // ============================================================
-  // FIX 2 — QuizStart no clique do botão (não no mount)
-  // ============================================================
-  const handleStart = () => {
-    trackEvent('QuizStart');
-    setScreen('quiz');
-  };
 
-  // ============================================================
-  // FIX 3 — Race condition fix com ref síncrono
-  // FIX 4 — Checkmark visual feedback integrado na renderização
-  // ============================================================
-  const handleOptionClick = (option) => {
-    if (isAdvancingRef.current) return;
-    isAdvancingRef.current = true;
-
-    setSelectedOption(option);
-    trackEvent('QuizStep', { step: currentQ + 1, answer: option });
-
-    setTimeout(() => {
-      if (currentQ < QUESTIONS.length - 1) {
-        setAnimatingOut(true);
-        setTimeout(() => {
-          setCurrentQ(prev => prev + 1);
-          setSelectedOption(null);
-          setAnimatingOut(false);
-          isAdvancingRef.current = false;
-        }, 150);
-      } else {
-        trackEvent('QuizComplete', { totalSteps: QUESTIONS.length });
-        setScreen('loading');
-        startLoadingSequence();
-      }
-    }, 350);
-  };
-
-  const startLoadingSequence = () => {
-    const texts = [
-      { t: "⚙️ Analizando tus respuestas...", delay: 0 },
-      { t: "📊 Creando tu perfil...", delay: 500 },
-      { t: "🎯 Identificando ruta...", delay: 1000 },
-      { t: "✅ ¡Tu plan está listo!", delay: 1500 }
-    ];
-
-    texts.forEach(({ t, delay }) => {
-      setTimeout(() => setLoadingText(t), delay);
-    });
-
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += (100 / (1800 / 50));
-      setLoadingProgress(Math.min(progress, 100));
-    }, 50);
-
-    setTimeout(() => {
-      clearInterval(interval);
-      setScreen('vsl');
-    }, 1800);
-  };
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -629,125 +516,7 @@ export default function App() {
       
       <div style={inlineStyles.wrapper}>
         
-        {/* START SCREEN */}
-        {screen === 'start' && (
-          <div style={{ marginTop: '4vh' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={inlineStyles.badge}>🍮 Quiz de Personalización Gratuito</div>
-            </div>
-            <h1 className="headline-text" style={inlineStyles.headline}>
-              ¿Sabías que miles de mujeres ya generan ingresos vendiendo postres caseros?
-            </h1>
-            <p style={inlineStyles.subtitle}>
-              Responde 4 preguntas rápidas y descubre si este método es para ti — adaptado a tu situación.
-            </p>
-            
-            <ul style={inlineStyles.benefitsList}>
-              <li style={inlineStyles.benefitItem}><span>✅</span> Solo toma 1 minuto</li>
-              <li style={inlineStyles.benefitItem}><span>✅</span> 100% gratis</li>
-              <li style={inlineStyles.benefitItem}><span>✅</span> Recibes un plan personalizado</li>
-            </ul>
 
-            <button 
-              style={inlineStyles.buttonStart} 
-              onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.97)'}
-              onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-              onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              onClick={handleStart}
-            >
-              Comenzar Quiz Gratis →
-            </button>
-            <p style={{ textAlign: 'center', color: '#6b4c38', fontSize: '12px' }}>
-              🔒 Tus respuestas son privadas y confidenciales
-            </p>
-          </div>
-        )}
-
-        {/* QUIZ SCREEN */}
-        {screen === 'quiz' && (
-          <div style={{ marginTop: '2vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', color: '#d63031', fontWeight: 'bold' }}>
-              <span>Pregunta {currentQ + 1} de {QUESTIONS.length}</span>
-              <span>{currentQuestionData.progress}%</span>
-            </div>
-            <div style={inlineStyles.progressBarBg}>
-              <div style={{ ...inlineStyles.progressBarFill, width: `${currentQuestionData.progress}%` }}></div>
-            </div>
-
-            <div className={animatingOut ? "anim-fade-out" : "anim-fade-in"} style={{ marginTop: '32px' }}>
-              {/* FIX 7: headline responsiva */}
-              <h2 style={{ fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: '800', marginBottom: '8px', lineHeight: '1.4', color: '#2d1b0e' }}>
-                {currentQuestionData.headline}
-              </h2>
-              {/* FIX 7: subtítulo legível */}
-              <p style={{ color: '#6b4c38', fontSize: '13px', fontStyle: 'italic', marginBottom: '20px', lineHeight: '1.5' }}>
-                {currentQuestionData.subtitle}
-              </p>
-
-              <div>
-                {/* FIX 4: Checkmark visual feedback */}
-                {currentQuestionData.options.map((option, idx) => (
-                  <button
-                    key={idx}
-                    className={`option-btn ${selectedOption === option ? 'selected' : ''}`}
-                    onClick={() => handleOptionClick(option)}
-                  >
-                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                      <span>{option}</span>
-                      {selectedOption === option && (
-                        <span style={{ color: '#c0392b', fontWeight: 'bold', fontSize: '18px', marginLeft: '8px', flexShrink: 0 }}>✓</span>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* FIX 9 — LOADING SCREEN com contexto visual */}
-        {screen === 'loading' && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: '60vh' }}>
-            {/* FIX 9: Badge de contexto */}
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <span style={{
-                background: '#d63031', color: '#fff',
-                padding: '4px 12px', borderRadius: '99px',
-                fontSize: '12px', fontWeight: '700',
-              }}>
-                Preparando tu resultado
-              </span>
-            </div>
-
-            <div style={{ 
-              width: '60px', height: '60px', 
-              border: '4px solid rgba(0,0,0,0.08)', 
-              borderTopColor: '#d63031', // FIX 1: vermelho
-              borderRadius: '50%', 
-              animation: 'spin 1s linear infinite',
-              marginBottom: '32px'
-            }}></div>
-            
-            <h2 style={{ fontSize: '18px', fontWeight: '700', minHeight: '28px', textAlign: 'center', marginBottom: '12px', color: '#2d1b0e' }}>
-              {loadingText}
-            </h2>
-            
-            <div style={{ width: '100%', maxWidth: '300px' }}>
-              <div style={inlineStyles.progressBarBg}>
-                <div style={{ ...inlineStyles.progressBarFill, width: `${loadingProgress}%` }}></div>
-              </div>
-              <div style={{ textAlign: 'center', color: '#d63031', fontWeight: 'bold', marginTop: '8px' }}>
-                {Math.floor(loadingProgress)}%
-              </div>
-            </div>
-
-            {/* FIX 9: instrução para não fechar */}
-            <p style={{ color: '#9b8572', fontSize: '13px', marginTop: '16px' }}>
-              Por favor, no cierres esta página...
-            </p>
-          </div>
-        )}
 
         {/* VSL SCREEN — FIX 1: cores claras */}
         {screen === 'vsl' && (
